@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prevención de Inundaciones CDMX</title>
+    <!-- SB Admin 2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/css/sb-admin-2.min.css" rel="stylesheet">
+    <style>
+        .map-container {
+            height: 500px;
+            width: 100%;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        .result-card {
+            border-left: 5px solid;
+        }
+        .result-card.bajo { border-left-color: #28a745; }
+        .result-card.medio { border-left-color: #ffc107; }
+        .result-card.alto { border-left-color: #dc3545; }
+        .bg-bajo { background-color: #d4edda; }
+        .bg-medio { background-color: #fff3cd; }
+        .bg-alto { background-color: #f8d7da; }
+        .text-bajo { color: #155724; }
+        .text-medio { color: #856404; }
+        .text-alto { color: #721c24; }
+        .card-icon {
+            font-size: 2rem;
+        }
+        .preguntas-adicionales {
+            display: none;
+        }
+        /* Ajustes para móviles */
+        @media (max-width: 768px) {
+            .map-container {
+                height: 300px;
+            }
+            .card-body {
+                padding: 1rem;
+            }
+            .form-group {
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body id="page-top">
+    <!-- Page Wrapper -->
+    <div id="wrapper">
+        <!-- Sidebar -->
+        <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+            <!-- Sidebar - Brand -->
+            <a class="sidebar-brand d-flex align-items-center justify-content-center" href="#">
+                <div class="sidebar-brand-icon rotate-n-15">
+                    <i class="fas fa-tint"></i>
+                </div>
+                <div class="sidebar-brand-text mx-3">Inundaciones CDMX</div>
+            </a>
+
+            <!-- Divider -->
+            <hr class="sidebar-divider my-0">
+
+            <!-- Nav Item - Dashboard -->
+            <li class="nav-item active">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-fw fa-tachometer-alt"></i>
+                    <span>Panel de Control</span></a>
+            </li>
+        </ul>
+        <!-- End of Sidebar -->
+
+        <!-- Content Wrapper -->
+        <div id="content-wrapper" class="d-flex flex-column">
+            <!-- Main Content -->
+            <div id="content">
+                <!-- Topbar -->
+                <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
+                    <!-- Sidebar Toggle (Topbar) -->
+                    <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
+                        <i class="fa fa-bars"></i>
+                    </button>
+
+                    <!-- Topbar Navbar -->
+                    <ul class="navbar-nav ml-auto">
+                        <li class="nav-item dropdown no-arrow">
+                            <a class="nav-link dropdown-toggle" href="#" id="alertsDropdown" role="button"
+                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fas fa-bell fa-fw"></i>
+                                <!-- Counter - Alerts -->
+                                <span class="badge badge-danger badge-counter">3+</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+                <!-- End of Topbar -->
+
+                <!-- Begin Page Content -->
+                <div class="container-fluid">
+                    <!-- Header con universidad y licenciatura -->
+                    <div class="row mb-4">
+                        <div class="col-12 text-center">
+                            <h2 class="text-primary">UNRC “Lic. Ciencia de Datos para Negocios”</h2>
+                            <p class="lead text-gray-700">Sistema de Prevención de Inundaciones CDMX</p>
+                        </div>
+                    </div>
+
+                    <!-- Page Heading -->
+                    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                        <h1 class="h3 mb-0 text-gray-800">Prevención de Inundaciones</h1>
+                        <button id="btn-calcular" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+                            <i class="fas fa-sync-alt fa-sm text-white-50"></i> Actualizar Riesgo
+                        </button>
+                    </div>
+
+                    <!-- Content Row -->
+                    <div class="row">
+                        <!-- Map Card -->
+                        <div class="col-xl-12 col-lg-12">
+                            <div class="card shadow mb-4">
+                                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                                    <h6 class="m-0 font-weight-bold text-primary">Mapa de Riesgo en Tiempo Real</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="map-container">
+                                        <div id="map"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Content Row -->
+                    <div class="row">
+                        <!-- Form Card -->
+                        <div class="col-xl-6 col-lg-6">
+                            <div class="card shadow mb-4">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary">Evalúa tu Riesgo Personal</h6>
+                                </div>
+                                <div class="card-body">
+                                    <form id="form-riesgo">
+                                        <div class="form-group mb-3">
+                                            <label>Alcaldía</label>
+                                            <select id="alcaldia" class="form-control" required>
+                                                <option value="" disabled selected>Selecciona tu alcaldía</option>
+                                                <option value="Azcapotzalco">Azcapotzalco</option>
+                                                <option value="Benito_Juarez">Benito Juárez</option>
+                                                <option value="Coyoacan">Coyoacán</option>
+                                                <option value="Cuajimalpa_de_Morelos">Cuajimalpa de Morelos</option>
+                                                <option value="Cuauhtemoc">Cuauhtémoc</option>
+                                                <option value="Gustavo_A._Madero">Gustavo A. Madero</option>
+                                                <option value="Iztacalco">Iztacalco</option>
+                                                <option value="Iztapalapa">Iztapalapa</option>
+                                                <option value="La_Magdalena_Contreras">La Magdalena Contreras</option>
+                                                <option value="Miguel_Hidalgo">Miguel Hidalgo</option>
+                                                <option value="Milpa_Alta">Milpa Alta</option>
+                                                <option value="Tlalpan">Tlalpan</option>
+                                                <option value="Tlahuac">Tláhuac</option>
+                                                <option value="Venustiano_Carranza">Venustiano Carranza</option>
+                                                <option value="Xochimilco">Xochimilco</option>
+                                                <option value="Alvaro_Obregon">Álvaro Obregón</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group mb-3">
+                                            <label>¿Está lloviendo ahora mismo en tu alcaldía?</label>
+                                            <select id="esta_lloviendo" class="form-control" required>
+                                                <option value="" disabled selected>Selecciona una opción</option>
+                                                <option value="si">Sí</option>
+                                                <option value="no">No</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <!-- Preguntas adicionales que se muestran solo si llueve -->
+                                        <div id="preguntas-adicionales" class="preguntas-adicionales">
+                                            <div class="form-group mb-3">
+                                                <label>¿Tu drenaje suele ser malo?</label>
+                                                <select id="drenaje" class="form-control" required>
+                                                    <option value="" disabled selected>Selecciona una opción</option>
+                                                    <option value="1">Bueno</option>
+                                                    <option value="2">Regular</option>
+                                                    <option value="3">Malo</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group mb-4">
+                                                <label>¿Has notado si en la zona donde vives se inunda constantemente cuando llueve?</label>
+                                                <select id="inunda" class="form-control" required>
+                                                    <option value="" disabled selected>Selecciona una opción</option>
+                                                    <option value="no">No</option>
+                                                    <option value="si">Sí</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <button type="button" id="btn-prediccion" class="btn btn-success btn-block" disabled>
+                                            <i class="fas fa-calculator"></i> Predecir Riesgo
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Result Card -->
+                        <div class="col-xl-6 col-lg-6">
+                            <div id="resultado" class="card result-card d-none">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary">Tu Evaluación de Riesgo</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div id="contenido-resultado"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer con créditos -->
+                    <div class="row mt-5">
+                        <div class="col-12">
+                            <div class="card shadow">
+                                <div class="card-body">
+                                    <h6 class="text-center text-gray-700">Créditos del Proyecto</h6>
+                                    <p class="text-center">
+                                        <strong>Autores:</strong><br>
+                                        Díaz Elizalde Rebeca<br>
+                                        Lopez Bonequi Jhorsua Abraham<br>
+                                        Mascorro Flores Carolina Moreno<br>
+                                        Nochebuena Roberto Ángel
+                                    </p>
+                                    <p class="text-center">
+                                        <strong>Fuente de datos meteorológicos:</strong><br>
+                                        <a href="https://openweathermap.org" target="_blank">OpenWeatherMap</a>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /.container-fluid -->
+            </div>
+            <!-- End of Main Content -->
+
+            <!-- Footer -->
+            <footer class="sticky-footer bg-white">
+                <div class="container my-auto">
+                    <div class="copyright text-center my-auto">
+                        <span>© 2025 Prevención de Inundaciones CDMX</span>
+                    </div>
+                </div>
+            </footer>
+            <!-- End of Footer -->
+        </div>
+        <!-- End of Content Wrapper -->
+    </div>
+    <!-- End of Page Wrapper -->
+
+    <!-- Scroll to Top Button-->
+    <a class="scroll-to-top rounded" href="#page-top">
+        <i class="fas fa-angle-up"></i>
+    </a>
+
+    <!-- Bootstrap y SB Admin 2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/vendor/jquery/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/js/sb-admin-2.min.js"></script>
+    <script>
+        // Validar que todas las opciones estén seleccionadas
+        function validarFormulario() {
+            const alcaldia = document.getElementById('alcaldia').value;
+            const esta_lloviendo = document.getElementById('esta_lloviendo').value;
+            const btn = document.getElementById('btn-prediccion');
+
+            if (alcaldia && esta_lloviendo) {
+                if (esta_lloviendo === 'si') {
+                    const drenaje = document.getElementById('drenaje').value;
+                    const inunda = document.getElementById('inunda').value;
+                    btn.disabled = !(drenaje && inunda);
+                } else {
+                    btn.disabled = false;
+                }
+            } else {
+                btn.disabled = true;
+            }
+        }
+
+        // Mostrar/ocultar preguntas según si llueve
+        document.getElementById('esta_lloviendo').addEventListener('change', function() {
+            const preguntas = document.getElementById('preguntas-adicionales');
+            if (this.value === 'no') {
+                preguntas.style.display = 'none';
+            } else {
+                preguntas.style.display = 'block';
+            }
+            validarFormulario(); // Validar al cambiar
+        });
+
+        // Eventos para validar formulario
+        document.getElementById('alcaldia').addEventListener('change', validarFormulario);
+        document.getElementById('drenaje').addEventListener('change', validarFormulario);
+        document.getElementById('inunda').addEventListener('change', validarFormulario);
+
+        document.getElementById('btn-calcular').addEventListener('click', function() {
+            fetch('/calcular_riesgo')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert("Error: " + data.error);
+                    } else {
+                        document.getElementById('map').innerHTML = data.mapa;
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        });
+
+        document.getElementById('btn-prediccion').addEventListener('click', function() {
+            const alcaldia = document.getElementById('alcaldia').value;
+            const esta_lloviendo = document.getElementById('esta_lloviendo').value;
+
+            // Si no está lloviendo, no se envían las otras preguntas
+            if (esta_lloviendo === 'no') {
+                fetch('/predecir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        alcaldia: alcaldia,
+                        esta_lloviendo: esta_lloviendo
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert("Error: " + data.error);
+                    } else {
+                        const res = document.getElementById('resultado');
+                        res.classList.remove('d-none');
+                        res.classList.remove('bajo', 'medio', 'alto');
+                        res.classList.add(data.riesgo === 1 ? 'bajo' : data.riesgo === 2 ? 'medio' : 'alto');
+                        
+                        let html = `<div class="alert ${data.riesgo === 1 ? 'bg-bajo text-bajo' : data.riesgo === 2 ? 'bg-medio text-medio' : 'bg-alto text-alto'}">
+                                      <h4 class="alert-heading">Riesgo: ${data.riesgo}</h4>
+                                      <p>${data.mensaje}</p>
+                                    </div>`;
+
+                        html += `<h5>Condiciones meteorológicas actuales:</h5>
+                                 <p class="mb-1"><i class="fas fa-tint text-primary"></i> Lluvia actual: ${data.datos_meteorologicos.mm_hora} mm/h</p>
+                                 <p class="mb-1"><i class="fas fa-thermometer-half text-warning"></i> Temperatura: ${data.datos_meteorologicos.temperatura} °C</p>
+                                 <p class="mb-1"><i class="fas fa-tint text-info"></i> Humedad: ${data.datos_meteorologicos.humedad}%</p>
+                                 <p class="mb-1"><i class="fas fa-cloud text-secondary"></i> Clima: ${data.datos_meteorologicos.descripcion_clima}</p>
+                                 <p class="mb-0"><i class="fas fa-wind text-success"></i> Viento: ${data.datos_meteorologicos.velocidad_viento} m/s</p>`;
+
+                        html += `<h5 class="mt-3">Recomendaciones:</h5><ul class="mb-3">`;
+                        data.recomendaciones.forEach(r => {
+                            html += `<li>${r}</li>`;
+                        });
+                        html += `</ul>`;
+
+                        html += `<h5>Contactos de emergencia:</h5>
+                                 <p class="mb-1"><i class="fas fa-phone text-danger"></i> ${data.contactos['911']}</p>
+                                 <p class="mb-0"><i class="fas fa-shield-alt text-info"></i> Protección Civil: ${data.contactos['proteccion_civil_cdmx']}</p>`;
+
+                        html += `<h5 class="mt-3">Síguenos en redes:</h5>
+                                 <p class="mb-1"><i class="fab fa-twitter text-info"></i> CONAGUA: ${data.redes_sociales['conagua']}</p>
+                                 <p class="mb-0"><i class="fab fa-twitter text-info"></i> Protección Civil CDMX: ${data.redes_sociales['proteccion_civil_cdmx']}</p>`;
+
+                        document.getElementById('contenido-resultado').innerHTML = html;
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            } else {
+                // Si está lloviendo, se envían todas las preguntas
+                const drenaje = document.getElementById('drenaje').value;
+                const inunda = document.getElementById('inunda').value;
+
+                fetch('/predecir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        alcaldia: alcaldia,
+                        esta_lloviendo: esta_lloviendo,
+                        condicion_drenaje: drenaje,
+                        inunda_con_lluvia: inunda
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert("Error: " + data.error);
+                    } else {
+                        const res = document.getElementById('resultado');
+                        res.classList.remove('d-none');
+                        res.classList.remove('bajo', 'medio', 'alto');
+                        res.classList.add(data.riesgo === 1 ? 'bajo' : data.riesgo === 2 ? 'medio' : 'alto');
+                        
+                        let html = `<div class="alert ${data.riesgo === 1 ? 'bg-bajo text-bajo' : data.riesgo === 2 ? 'bg-medio text-medio' : 'bg-alto text-alto'}">
+                                      <h4 class="alert-heading">Riesgo: ${data.riesgo}</h4>
+                                      <p>${data.mensaje}</p>
+                                    </div>`;
+
+                        html += `<h5>Condiciones meteorológicas actuales:</h5>
+                                 <p class="mb-1"><i class="fas fa-tint text-primary"></i> Lluvia actual: ${data.datos_meteorologicos.mm_hora} mm/h</p>
+                                 <p class="mb-1"><i class="fas fa-thermometer-half text-warning"></i> Temperatura: ${data.datos_meteorologicos.temperatura} °C</p>
+                                 <p class="mb-1"><i class="fas fa-tint text-info"></i> Humedad: ${data.datos_meteorologicos.humedad}%</p>
+                                 <p class="mb-1"><i class="fas fa-cloud text-secondary"></i> Clima: ${data.datos_meteorologicos.descripcion_clima}</p>
+                                 <p class="mb-0"><i class="fas fa-wind text-success"></i> Viento: ${data.datos_meteorologicos.velocidad_viento} m/s</p>`;
+
+                        html += `<h5 class="mt-3">Recomendaciones:</h5><ul class="mb-3">`;
+                        data.recomendaciones.forEach(r => {
+                            html += `<li>${r}</li>`;
+                        });
+                        html += `</ul>`;
+
+                        html += `<h5>Contactos de emergencia:</h5>
+                                 <p class="mb-1"><i class="fas fa-phone text-danger"></i> ${data.contactos['911']}</p>
+                                 <p class="mb-0"><i class="fas fa-shield-alt text-info"></i> Protección Civil: ${data.contactos['proteccion_civil_cdmx']}</p>`;
+
+                        html += `<h5 class="mt-3">Mantente en alerta siguiendo a:</h5>
+                                 <p class="mb-1"><i class="fab fa-twitter text-info"></i> CONAGUA: ${data.redes_sociales['conagua']}</p>
+                                 <p class="mb-0"><i class="fab fa-twitter text-info"></i> Protección Civil CDMX: ${data.redes_sociales['proteccion_civil_cdmx']}</p>`;
+
+                        document.getElementById('contenido-resultado').innerHTML = html;
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        });
+    </script>
+</body>
+</html>
