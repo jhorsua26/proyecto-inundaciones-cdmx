@@ -1,7 +1,7 @@
 import requests
 
-# Clave de API de OpenWeather (debes registrarte)
-API_KEY = "3c5e5740311fde42201d81d3f818a098"
+import os
+API_KEY = os.environ.get('OPENWEATHER_API_KEY')
 
 def obtener_datos_meteorologicos(alcaldia):
     # Coordenadas de las 16 alcaldías de CDMX
