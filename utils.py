@@ -3,16 +3,16 @@ import pandas as pd
 def cargar_probabilidades_riesgo(alcaldia):
     """
     Carga la probabilidad de cada nivel de riesgo para una alcaldía
-    desde tabla_probabilidad_completa.csv
+    desde data/tabla_probabilidad_completa.csv
     """
     try:
-        # Cargar tabla de probabilidades
-        df = pd.read_csv('tabla_probabilidad_completa.csv')
+        # Cargar tabla de probabilidades desde la carpeta data/
+        df = pd.read_csv('data/tabla_probabilidad_completa.csv')
         
-        # Filtrar datos para la alcaldía específica
-        datos_alcaldia = df[df['Alcaldia'] == alcaldia]
+        # Buscar alcaldía
+        fila = df[df['alcaldia'] == alcaldia]
         
-        if datos_alcaldia.empty:
+        if fila.empty:
             print(f"⚠️ Alcaldía no encontrada: {alcaldia}")
             # Valores por defecto si no se encuentra la alcaldía
             return {
@@ -24,23 +24,15 @@ def cargar_probabilidades_riesgo(alcaldia):
                 'riesgo_promedio': 3.0
             }
         
-        # Crear diccionario con probabilidades
-        probabilidades = {}
-        for nivel in [1, 2, 3, 4, 5]:
-            fila = datos_alcaldia[datos_alcaldia['Nivel de riesgo (k)'] == nivel]
-            if not fila.empty:
-                probabilidad = fila.iloc[0]['Probabilidad p(riesgo k)']
-            else:
-                probabilidad = 0.0  # Valor por defecto si no hay datos
-            probabilidades[f'riesgo_{nivel}'] = probabilidad
-        
-        # Calcular riesgo promedio
-        riesgo_promedio = datos_alcaldia['riesgo_promedio'].iloc[0] if 'riesgo_promedio' in datos_alcaldia.columns else 3.0
-        
-        resultado = probabilidades.copy()
-        resultado['riesgo_promedio'] = riesgo_promedio
-        
-        return resultado
+        fila = fila.iloc[0]
+        return {
+            'riesgo_1': fila['riesgo_1'],
+            'riesgo_2': fila['riesgo_2'],
+            'riesgo_3': fila['riesgo_3'],
+            'riesgo_4': fila['riesgo_4'],
+            'riesgo_5': fila['riesgo_5'],
+            'riesgo_promedio': fila['riesgo_promedio']
+        }
     except Exception as e:
         print(f"Error al cargar probabilidades: {e}")
         # Valores por defecto
