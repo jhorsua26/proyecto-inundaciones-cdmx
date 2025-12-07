@@ -1,10 +1,10 @@
 import requests
 
-import os
-API_KEY = os.environ.get('OPENWEATHER_API_KEY')
+# Clave de API de OpenWeather
+API_KEY = "3c5e5740311fde42201d81d3f818a098"
 
 def obtener_datos_meteorologicos(alcaldia):
-    # Coordenadas de las 16 alcaldías de CDMX
+    # Coordenadas de las alcaldías
     coordenadas = {
         'Azcapotzalco': (19.4833, -99.1833),
         'Benito_Juarez': (19.4000, -99.1500),
@@ -23,24 +23,23 @@ def obtener_datos_meteorologicos(alcaldia):
         'Xochimilco': (19.2500, -99.1000),
         'Alvaro_Obregon': (19.3833, -99.2167)
     }
-
+    
     coords = coordenadas.get(alcaldia, (19.4326, -99.1332))  # Por defecto CDMX
     lat, lon = coords
-
+    
     url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric&lang=es"
     try:
         response = requests.get(url)
         data = response.json()
-        # La API devuelve precipitación en los últimos 1h (si está disponible)
-        mm_hora = data.get('rain', {}).get('1h', 0)
+        
+        # Obtener datos
+        mm_hora = data.get('rain', {}).get('1h', 0)  # Lluvia en la última hora
         temperatura = data.get('main', {}).get('temp', 0)
         humedad = data.get('main', {}).get('humidity', 0)
         descripcion_clima = data.get('weather', [{}])[0].get('description', 'Desconocido')
         velocidad_viento = data.get('wind', {}).get('speed', 0)
+        
         return mm_hora, temperatura, humedad, descripcion_clima, velocidad_viento
-    except:
-        return 0, 0, 0, 'Desconocido', 0  # Si falla, asumimos valores por defecto
-
-def obtener_lluvia_actual(alcaldia):
-    mm_hora, _, _, _, _ = obtener_datos_meteorologicos(alcaldia)
-    return mm_hora
+    except Exception as e:
+        print(f"Error obteniendo datos meteorológicos: {e}")
+        return 0, 0, 0, 'Desconocido', 0  # Valores por defecto

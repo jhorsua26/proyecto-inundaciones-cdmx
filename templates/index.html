@@ -106,7 +106,7 @@
                     <!-- Header con universidad y licenciatura -->
                     <div class="row mb-4">
                         <div class="col-12 text-center">
-                            <h2 class="text-primary">UNRC “Lic. Ciencia de Datos para Negocios”</h2>
+                            <h2 class="text-primary">UNRC "Lic. Ciencia de Datos para Negocios"</h2>
                             <p class="lead text-gray-700">Sistema de Prevención de Inundaciones CDMX</p>
                         </div>
                     </div>
@@ -269,6 +269,17 @@
     <script src="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/js/sb-admin-2.min.js"></script>
     <script>
+        // Mostrar/ocultar preguntas según si llueve
+        document.getElementById('esta_lloviendo').addEventListener('change', function() {
+            const preguntas = document.getElementById('preguntas-adicionales');
+            if (this.value === 'no') {
+                preguntas.style.display = 'none';
+            } else {
+                preguntas.style.display = 'block';
+            }
+            validarFormulario(); // Validar al cambiar
+        });
+
         // Validar que todas las opciones estén seleccionadas
         function validarFormulario() {
             const alcaldia = document.getElementById('alcaldia').value;
@@ -287,17 +298,6 @@
                 btn.disabled = true;
             }
         }
-
-        // Mostrar/ocultar preguntas según si llueve
-        document.getElementById('esta_lloviendo').addEventListener('change', function() {
-            const preguntas = document.getElementById('preguntas-adicionales');
-            if (this.value === 'no') {
-                preguntas.style.display = 'none';
-            } else {
-                preguntas.style.display = 'block';
-            }
-            validarFormulario(); // Validar al cambiar
-        });
 
         // Eventos para validar formulario
         document.getElementById('alcaldia').addEventListener('change', validarFormulario);
@@ -345,6 +345,8 @@
                                       <h4 class="alert-heading">Riesgo: ${data.riesgo}</h4>
                                       <p>${data.mensaje}</p>
                                     </div>`;
+
+                        html += `<h5>Alcaldía evaluada: <strong>${data.alcaldia}</strong></h5>`;
 
                         html += `<h5>Condiciones meteorológicas actuales:</h5>
                                  <p class="mb-1"><i class="fas fa-tint text-primary"></i> Lluvia actual: ${data.datos_meteorologicos.mm_hora} mm/h</p>
@@ -401,6 +403,8 @@
                                       <p>${data.mensaje}</p>
                                     </div>`;
 
+                        html += `<h5>Alcaldía evaluada: <strong>${data.alcaldia}</strong></h5>`;
+
                         html += `<h5>Condiciones meteorológicas actuales:</h5>
                                  <p class="mb-1"><i class="fas fa-tint text-primary"></i> Lluvia actual: ${data.datos_meteorologicos.mm_hora} mm/h</p>
                                  <p class="mb-1"><i class="fas fa-thermometer-half text-warning"></i> Temperatura: ${data.datos_meteorologicos.temperatura} °C</p>
@@ -418,7 +422,7 @@
                                  <p class="mb-1"><i class="fas fa-phone text-danger"></i> ${data.contactos['911']}</p>
                                  <p class="mb-0"><i class="fas fa-shield-alt text-info"></i> Protección Civil: ${data.contactos['proteccion_civil_cdmx']}</p>`;
 
-                        html += `<h5 class="mt-3">Mantente en alerta siguiendo a:</h5>
+                        html += `<h5 class="mt-3">Síguenos en redes:</h5>
                                  <p class="mb-1"><i class="fab fa-twitter text-info"></i> CONAGUA: ${data.redes_sociales['conagua']}</p>
                                  <p class="mb-0"><i class="fab fa-twitter text-info"></i> Protección Civil CDMX: ${data.redes_sociales['proteccion_civil_cdmx']}</p>`;
 

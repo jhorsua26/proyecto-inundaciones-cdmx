@@ -1,15 +1,11 @@
 from flask import Flask, render_template, request, jsonify
-import joblib
 import pandas as pd
 import json
 import folium
 from api_meteorologia import obtener_datos_meteorologicos
-from utils import cargar_features_atlas
+from utils import cargar_probabilidades_riesgo, obtener_riesgo_base, convertir_5_a_3
 
 app = Flask(__name__)
-
-# Cargar modelo
-modelo = joblib.load('modelo_riesgo_inundacion_con_atlas.pkl')
 
 # Cargar GeoJSON de alcaldías
 with open('data/alcaldias_cdmx.json', 'r', encoding='utf-8') as f:
@@ -18,30 +14,28 @@ with open('data/alcaldias_cdmx.json', 'r', encoding='utf-8') as f:
 def crear_mapa_riesgo():
     alcaldias = [feature['properties']['NOMGEO'] for feature in geojson_data['features']]
 
-    riesgos = {}
+    # Obtener lluvia actual para cada alcaldía
+    lluvias = {}
     for alcaldia in alcaldias:
-        mm_hora, _, _, _, _ = obtener_datos_meteorologicos(alcaldia)
-        riesgo_promedio, riesgo_std = cargar_features_atlas(alcaldia)
-
-        # Crear DataFrame con los mismos nombres de columnas que el modelo
-        X = pd.DataFrame([[mm_hora, riesgo_promedio, riesgo_std]], 
-                         columns=['mm_hora', 'riesgo_promedio', 'riesgo_std'])
-        riesgo = modelo.predict(X)[0]
-        riesgos[alcaldia] = int(riesgo)
+        # Obtener solo lluvia actual (sin usar atlas para el mapa)
+        mm_hora, temperatura, humedad, descripcion_clima, velocidad_viento = obtener_datos_meteorologicos(alcaldia)
+        lluvias[alcaldia] = mm_hora
 
     # Crear mapa base
     mapa = folium.Map(location=[19.4326, -99.1332], zoom_start=11)
 
-    def estilo_riesgo(feature):
+    def estilo_lluvia(feature):
         alcaldia_nombre = feature['properties']['NOMGEO']
-        riesgo = riesgos.get(alcaldia_nombre, 1)
-        riesgo = int(riesgo)
-        if riesgo == 1:
-            color = 'green'
-        elif riesgo == 2:
-            color = 'orange'
+        mm_hora = lluvias.get(alcaldia_nombre, 0)  # Valor por defecto
+        
+        # Colorear según intensidad de lluvia (rangos realistas)
+        if mm_hora <= 10:
+            color = 'green'        # Sin lluvia o muy ligera
+        elif mm_hora <= 30:
+            color = 'yellow'       # Lluvia moderada
         else:
-            color = 'red'
+            color = 'orange'       # Lluvia fuerte o muy fuerte
+        
         return {
             'fillColor': color,
             'color': 'black',
@@ -51,7 +45,7 @@ def crear_mapa_riesgo():
 
     folium.GeoJson(
         geojson_data,
-        style_function=estilo_riesgo,
+        style_function=estilo_lluvia,
         tooltip=folium.GeoJsonTooltip(fields=['NOMGEO'], aliases=['Alcaldía'])
     ).add_to(mapa)
 
@@ -77,62 +71,81 @@ def predecir():
         alcaldia = data['alcaldia']
         esta_lloviendo = data['esta_lloviendo']
 
+        # Obtener datos meteorológicos
         mm_hora, temperatura, humedad, descripcion_clima, velocidad_viento = obtener_datos_meteorologicos(alcaldia)
-        riesgo_promedio, riesgo_std = cargar_features_atlas(alcaldia)
+        
+        # Obtener riesgo base de la alcaldía (basado en tabla_probabilidad_completa.csv)
+        riesgo_base, probabilidades = obtener_riesgo_base(alcaldia)
 
-        # Nueva lógica: si no está lloviendo, riesgo = 1
+        # Nueva lógica: si no está lloviendo, riesgo = riesgo base
         if esta_lloviendo == 'no':
-            riesgo = 1
-            mensaje = "Riesgo bajo. No se reporta lluvia en este momento."
+            riesgo = riesgo_base
+            mensaje = f"Riesgo basado en datos históricos de {alcaldia}."
             recomendaciones = [
                 "Mantente informado con autoridades locales.",
                 "Sigue monitoreando las condiciones climáticas."
             ]
         else:
-            # Crear DataFrame con los mismos nombres de columnas que el modelo
-            X = pd.DataFrame([[mm_hora, riesgo_promedio, riesgo_std]], 
-                             columns=['mm_hora', 'riesgo_promedio', 'riesgo_std'])
+            # Si está lloviendo, ajustar riesgo con lluvia
+            riesgo = riesgo_base
             
-            riesgo = modelo.predict(X)[0]
-
-            # Leer respuestas del usuario (solo si están presentes)
-            condicion_drenaje = int(data.get('condicion_drenaje', 2))  # Por defecto: regular
-            inunda_con_lluvia = data.get('inunda_con_lluvia', 'no')
-
+            # Ajustar con intensidad de lluvia (rangos realistas)
+            if mm_hora > 30:
+                riesgo = min(5, riesgo + 2)  # Sube 2 niveles con mucha lluvia
+            elif mm_hora > 10:
+                riesgo = min(5, riesgo + 1)  # Sube 1 nivel con lluvia moderada
+            else:
+                riesgo = max(1, riesgo - 1)  # Baja 1 nivel con poca lluvia
+            
             # Ajustar con respuestas del usuario
-            if condicion_drenaje == 3:  # Malo
-                riesgo = min(3, riesgo + 1)
-            elif condicion_drenaje == 1:  # Bueno
-                riesgo = max(1, riesgo - 1)
-
-            if inunda_con_lluvia == 'si':
-                riesgo = min(3, riesgo + 1)
+            if 'condicion_drenaje' in data:
+                condicion_drenaje = int(data['condicion_drenaje'])
+                if condicion_drenaje == 3:  # Malo
+                    riesgo = min(5, riesgo + 1)
+                elif condicion_drenaje == 1:  # Bueno
+                    riesgo = max(1, riesgo - 1)
+            
+            if 'inunda_con_lluvia' in data:
+                inunda_con_lluvia = data['inunda_con_lluvia']
+                if inunda_con_lluvia == 'si':
+                    riesgo = min(5, riesgo + 1)
 
             # Mensaje de riesgo
-            if riesgo == 1:
-                mensaje = "Riesgo bajo. Mantente informado."
+            if riesgo <= 2:
+                mensaje = f"Riesgo bajo en {alcaldia}. Mantente informado."
                 recomendaciones = [
                     "Sigue monitoreando las condiciones climáticas.",
                     "Mantente informado con autoridades locales."
                 ]
-            elif riesgo == 2:
-                mensaje = "Riesgo moderado. Mantente alerta."
+            elif riesgo <= 3:
+                mensaje = f"Riesgo moderado en {alcaldia}. Mantente alerta."
                 recomendaciones = [
                     "Evita transitar por calles con acumulación de agua.",
                     "Revisa que las coladeras estén despejadas.",
                     "Ten a la mano documentos importantes en lugar seguro."
                 ]
-            else:
-                mensaje = "¡Riesgo alto! Toma precauciones."
+            elif riesgo <= 4:
+                mensaje = f"Riesgo alto en {alcaldia}. Toma precauciones."
                 recomendaciones = [
                     "Evita salir si no es necesario.",
                     "Ten a la mano documentos importantes en lugar seguro.",
                     "Verifica que las salidas de emergencia estén despejadas."
                 ]
+            else:
+                mensaje = f"¡Riesgo muy alto en {alcaldia}! Extrema precaución."
+                recomendaciones = [
+                    "Permanece en un lugar seguro.",
+                    "Evita salir bajo ninguna circunstancia.",
+                    "Contacta a autoridades si es necesario."
+                ]
+
+        # Convertir riesgo 1-5 a nivel 1-3 para la interfaz
+        nivel_interfaz = convertir_5_a_3(riesgo)
 
         # Devolver JSON con todo
         return jsonify({
-            'riesgo': int(riesgo),
+            'riesgo': nivel_interfaz,  # 1, 2 o 3 para la interfaz
+            'riesgo_detalle': riesgo,  # 1-5 para el backend
             'mensaje': mensaje,
             'recomendaciones': recomendaciones,
             'datos_meteorologicos': {
@@ -142,6 +155,8 @@ def predecir():
                 'descripcion_clima': descripcion_clima,
                 'velocidad_viento': velocidad_viento
             },
+            'alcaldia': alcaldia,  # Mostrar alcaldía en la respuesta
+            'probabilidades': probabilidades,  # Mostrar probabilidades usadas
             'contactos': {
                 '911': 'Llama al 911 en caso de emergencia.',
                 'proteccion_civil_cdmx': '55 56 83 17 17'

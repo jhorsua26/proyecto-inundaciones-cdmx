@@ -1,28 +1,83 @@
 import pandas as pd
-import unicodedata
 
-def normalizar_nombre(nombre):
-    nombre = unicodedata.normalize('NFKD', nombre).encode('ascii', errors='ignore').decode()
-    nombre = nombre.replace(" ", "_").lower()
-    return nombre
-
-def cargar_features_atlas(alcaldia):
-    df = pd.read_csv('data/datos_lluvia_con_riesgo_actualizado.csv')
-    df['alcaldia_normalizada'] = df['alcaldia'].apply(normalizar_nombre)
-
-    # Normalizar la alcaldía que llega
-    alcaldia_normalizada = normalizar_nombre(alcaldia)
-
-    # Filtrar fila
-    fila = df[df['alcaldia_normalizada'] == alcaldia_normalizada]
-
-    if fila.empty:
-        print(f"⚠️ Alcaldía no encontrada en datos: {alcaldia}")
+def cargar_probabilidades_riesgo(alcaldia):
+    """
+    Carga la probabilidad de cada nivel de riesgo para una alcaldía
+    desde tabla_probabilidad_completa.csv
+    """
+    try:
+        # Cargar tabla de probabilidades
+        df = pd.read_csv('tabla_probabilidad_completa.csv')
+        
+        # Filtrar datos para la alcaldía específica
+        datos_alcaldia = df[df['Alcaldia'] == alcaldia]
+        
+        if datos_alcaldia.empty:
+            print(f"⚠️ Alcaldía no encontrada: {alcaldia}")
+            # Valores por defecto si no se encuentra la alcaldía
+            return {
+                'riesgo_1': 0.2,
+                'riesgo_2': 0.2,
+                'riesgo_3': 0.2,
+                'riesgo_4': 0.2,
+                'riesgo_5': 0.2,
+                'riesgo_promedio': 3.0
+            }
+        
+        # Crear diccionario con probabilidades
+        probabilidades = {}
+        for nivel in [1, 2, 3, 4, 5]:
+            fila = datos_alcaldia[datos_alcaldia['Nivel de riesgo (k)'] == nivel]
+            if not fila.empty:
+                probabilidad = fila.iloc[0]['Probabilidad p(riesgo k)']
+            else:
+                probabilidad = 0.0  # Valor por defecto si no hay datos
+            probabilidades[f'riesgo_{nivel}'] = probabilidad
+        
+        # Calcular riesgo promedio
+        riesgo_promedio = datos_alcaldia['riesgo_promedio'].iloc[0] if 'riesgo_promedio' in datos_alcaldia.columns else 3.0
+        
+        resultado = probabilidades.copy()
+        resultado['riesgo_promedio'] = riesgo_promedio
+        
+        return resultado
+    except Exception as e:
+        print(f"Error al cargar probabilidades: {e}")
         # Valores por defecto
-        return 3.0, 1.0  # riesgo_promedio, riesgo_std
+        return {
+            'riesgo_1': 0.2,
+            'riesgo_2': 0.2,
+            'riesgo_3': 0.2,
+            'riesgo_4': 0.2,
+            'riesgo_5': 0.2,
+            'riesgo_promedio': 3.0
+        }
 
-    fila = fila.iloc[0]
-    riesgo_promedio = fila['riesgo_promedio']
-    riesgo_std = fila['riesgo_std']
+def obtener_riesgo_base(alcaldia):
+    """
+    Obtiene el riesgo base de una alcaldía basado en la probabilidad más alta
+    """
+    probabilidades = cargar_probabilidades_riesgo(alcaldia)
+    
+    # Determinar el nivel de riesgo base (el más probable)
+    max_prob = 0
+    riesgo_base = 3  # Valor por defecto
+    
+    for nivel in [1, 2, 3, 4, 5]:
+        prob = probabilidades[f'riesgo_{nivel}']
+        if prob > max_prob:
+            max_prob = prob
+            riesgo_base = nivel
+    
+    return riesgo_base, probabilidades
 
-    return riesgo_promedio, riesgo_std
+def convertir_5_a_3(nivel_5):
+    """
+    Convierte nivel de riesgo 1-5 a 1-3 para interfaz
+    """
+    if nivel_5 <= 2:
+        return 1  # Bajo
+    elif nivel_5 == 3:
+        return 2  # Medio
+    else:
+        return 3  # Alto
