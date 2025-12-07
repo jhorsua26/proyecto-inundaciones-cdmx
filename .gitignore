@@ -1,22 +1,21 @@
+# Archivos temporales
+*.tmp
+*.log
+*.cache
+*.swp
+
+# Archivos de desarrollo
+.env
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
 .Python
 env/
 venv/
 .venv/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.DS_Store
-Thumbs.db
-data/*.pkl
-*.pkl
+
+# No ignorar archivos importantes
+!tabla_probabilidad_completa.csv
+!data/tabla_probabilidad_completa.csv
+!wsgi.py
+!api_meteorologia.py
+!utils.py
